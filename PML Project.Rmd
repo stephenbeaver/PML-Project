@@ -136,21 +136,9 @@ fancyRpartPlot(mod1$finalModel)
 
 predmod1 <- predict(mod1, testingPart)
 
-confmatrix1 <- confusionMatrix(predmod2, testingPart$classe)
+confmatrix1 <- confusionMatrix(predmod1, testingPart$classe)
 
 confmatrix1
-
-#Alt Code for Same Result
-
-#mod2 <- rpart(classe ~ . , data=trainingPart, method = 'class')
-#fancyRpartPlot(mod2)
-
-#predmod2 <- predict(mod2, testingPart, type = 'class')
-
-#confmatrix2 <- confusionMatrix(predmod2, testingPart$classe)
-
-#confmatrix2
-
 ```
 
 #### Random Forest Model
