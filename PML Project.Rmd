@@ -1,0 +1,187 @@
+---
+title: "Practical Machine Learning Project"
+author: "Stephen Beaver"
+date: "8/30/2019"
+output: html_document
+---
+
+## Practical Machine Learning Project
+
+### Overview
+Goal: Predict the 'classe' variable which is a 5 level factor, 'A', 'B', 'C', 'D', or 'E'.
+
+Instructions:
+Create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+Source:
+http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har
+
+### Load Data and Packages and Split Data into Sets
+
+Here, we will load the data and packages and split the training set into
+training and testing partitions for cross validation.
+
+```{r}
+#Packages
+library(caret)
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+library(rattle)
+library(randomForest)
+library(dplyr)
+
+set.seed(73)
+
+#Set Working Dir
+setwd("~/Coursera/Data Science Specialization/Practical Machine Learning/Project")
+
+#Data
+training <- read.csv('pml-training.csv')
+testing <- read.csv('pml-testing.csv')
+
+#Create Data Partition
+inTrain <- createDataPartition(y = training$classe, p = 0.7, list = F)
+trainingPart <- training[inTrain,]
+testingPart <- training[-inTrain,]
+
+
+```
+
+
+
+### Exploration
+
+```{r}
+
+dim(trainingPart)
+dim(testingPart)
+
+str(trainingPart$classe)
+
+summary(trainingPart$classe)
+
+```
+
+### Removing Variables with Near Zero Variance and mostly NA Values (95% NAs)
+
+Removing Near Zero Variance Variables reduces the number of variables from 160 to
+109.  Then removing variables that contain 95%+ NA reduces the 109 to 59.  We will
+also remove the first 5 variables that include non-relevant information that threw off
+my initial models.
+
+This should now allow the caret package functions to run.
+
+```{r}
+
+#Remove Near Zero Variance Variables
+NZV_vars <- nearZeroVar(trainingPart)
+trainingPart <- trainingPart[,-NZV_vars]
+testingPart <- testingPart[, -NZV_vars]
+
+#Check New dimensions
+dim(trainingPart)
+dim(testingPart)
+
+#How many rows is 5% of the TrainingPart?
+x <- 0.05*(nrow(trainingPart))
+
+#Remove Variables with mostly NAs
+trainingPart <- trainingPart %>% select_if(~sum(!is.na(.)) > x )
+testingPart <- testingPart %>% select_if(~sum(!is.na(.)) > x )
+
+#Check New dimensions
+dim(trainingPart)
+dim(testingPart)
+
+#Remove First 5 Variables X and Uuser Name and Time Stamps
+trainingPart <- trainingPart[, -(1:5)]
+testingPart <- testingPart[, -(1:5)]
+
+#Check New dimensions
+dim(trainingPart)
+dim(testingPart)
+
+
+```
+
+
+
+### Models
+
+#### Decision Tree Model
+
+Now that we have cleaned up the data, let make a decision tree to predict the class
+of our testing partition we split off from the training set.
+
+We will plot the tree and then report the confusion matrix of the predicted classes
+with the actual classes from the testing partition.
+
+Using the Decision Tree model gives us an accuracy of 72.15%.  
+
+
+```{r}
+
+trcont <- trainControl(method = 'cv', number = 5, allowParallel = TRUE)
+mod1 <- train(classe ~ . , data = trainingPart, method = 'rpart', trControl = trcont)
+fancyRpartPlot(mod1$finalModel)
+
+predmod1 <- predict(mod1, testingPart)
+
+confmatrix1 <- confusionMatrix(predmod2, testingPart$classe)
+
+confmatrix1
+
+#Alt Code for Same Result
+
+#mod2 <- rpart(classe ~ . , data=trainingPart, method = 'class')
+#fancyRpartPlot(mod2)
+
+#predmod2 <- predict(mod2, testingPart, type = 'class')
+
+#confmatrix2 <- confusionMatrix(predmod2, testingPart$classe)
+
+#confmatrix2
+
+```
+
+#### Random Forest Model
+
+Using a random forest model we get an accuracy of 99.81%
+
+```{r}
+mod3 <- train(classe ~ . , data=trainingPart, method = 'rf', trControl = trcont)
+
+predmod3 <- predict(mod3, newdata = testingPart)
+
+confmatrix3 <- confusionMatrix(predmod3, testingPart$classe)
+
+confmatrix3
+
+```
+
+### Applying to Validation Set
+
+Accuracy Predictions
+
+Decision Tree:  72.15%
+Random Forest: 99.81%
+
+So we will go with the random forest model and apply that to the validation set.
+
+```{r}
+predVal <- predict(mod3, testing)
+
+predVal
+
+```
+
+
